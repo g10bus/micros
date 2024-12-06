@@ -5,7 +5,7 @@ import fun
 app = Flask(__name__)
 
 
-@app.route('/greet', methods=['GET'])
+@app.route('/', methods=['GET'])
 def greet():
     naznach = request.args.get('purpose')
     login = request.args.get('login')
