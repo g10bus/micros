@@ -4,45 +4,39 @@ DATABASE_PATH = 'app_database.db'
 
 
 def register_user(log, emal, pas):
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-
     try:
-        # Проверка существования пользователя
-        cursor.execute("SELECT * FROM my_table WHERE loggin = ?", (log,))
-        if cursor.fetchone():
-            return False  # Пользователь уже существует
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
 
-        # Регистрация нового пользователя
-        cursor.execute('''
-            INSERT INTO my_table (loggin, email, address) VALUES (?, ?, ?)
-        ''', (log, emal, pas))
+            # Проверка существования пользователя
+            cursor.execute("SELECT 1 FROM my_table WHERE loggin = ? LIMIT 1", (log,))
+            if cursor.fetchone():
+                return False  # Пользователь уже существует
 
-        conn.commit()
-        print("ok Registr")
-        return True
+            # Регистрация нового пользователя
+            cursor.execute('''
+                INSERT INTO my_table (loggin, email, address) VALUES (?, ?, ?)
+            ''', (log, emal, pas))
+
+
+            return True
     except sqlite3.Error as e:
-        print(f"Ошибка базы данных при регистрации: {e}")
+
         return False
-    finally:
-        conn.close()
 
 
 def authenticate_user(log, pas):
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-
     try:
-        # Ищем пользователя по логину
-        cursor.execute("SELECT * FROM my_table WHERE loggin = ?", (log,))
-        user = cursor.fetchone()
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
 
-        if user and user[3] == pas:  # Проверка пароля
-            return {"status": "success", "message": "User authenticated"}
-        else:
+            # Ищем пользователя по логину
+            cursor.execute("SELECT address FROM my_table WHERE loggin = ?", (log,))
+            result = cursor.fetchone()
+
+            if result and result[0] == pas:  # Проверка пароля
+                return {"status": "success", "message": "User authenticated"}
             return None
     except sqlite3.Error as e:
-        print(f"Ошибка базы данных при аутентификации: {e}")
+
         return None
-    finally:
-        conn.close()
