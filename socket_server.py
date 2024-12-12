@@ -1,47 +1,105 @@
 from flask import Flask, jsonify, request
 import sqlite3
-import fun  # Ваш модуль с функциями регистрации и аутентификации
+import fun
+import os
 
 app = Flask(__name__)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Директория, где находится socket_server.py
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"UPLOAD_FOLDER: {UPLOAD_FOLDER}")
+
+try:
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+        print(f"Папка {UPLOAD_FOLDER} создана успешно.")
+    else:
+        print("Папка уже существует.")
+except Exception as e:
+    print(f"Ошибка при создании папки: {e}")
 
 @app.route('/greet', methods=['GET'])
 def greet():
-    # Получаем параметры из запроса
-    purpose = request.args.get('purpose')
+    naznach = request.args.get('purpose')
     login = request.args.get('login')
     email = request.args.get('email')
     password = request.args.get('password')
 
-    # Проверка обязательных параметров
-    if not login or not password or not purpose:
-        return jsonify({"status": "error", "message": "Поля purpose, login и password обязательны"}), 400
+    if naznach == "Registr":
+        result = fun.register_user(login, email, password)
+        if result:
+            return jsonify({"status": "success", "message": f"Пользователь {login} зарегистрирован"})
+        else:
+            return jsonify({"status": "error", "message": "Пользователь уже существует или ошибка базы данных"}), 400
 
-    if purpose == "Registr":
-        return handle_registration(login, email, password)
-    elif purpose == "Auth":
-        return handle_authentication(login, password)
+    elif naznach == "Auth":
+        result = fun.authenticate_user(login, password)
+        if result:
+            return jsonify(result)
+        else:
+            return jsonify({"status": "error", "message": "Неверные учетные данные"}), 401
+
+    return jsonify({"status": "error", "message": "Неверное значение purpose"}), 400
+
+
+
+@app.route('/upload_recipe', methods=['POST'])
+def upload_recipe():
+    try:
+        if 'image' not in request.files:
+            return jsonify({"status": "error", "message": "Изображение не загружено"}), 400
+
+        image = request.files['image']
+        title = request.form.get('title')
+        description = request.form.get('description')
+        author = request.form.get('author')
+
+        if not (title and description and author):
+            return jsonify({"status": "error", "message": "Все поля должны быть заполнены"}), 400
+
+        # Проверяем наличие папки uploads
+        UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+        if not os.path.exists(UPLOAD_FOLDER):
+            os.makedirs(UPLOAD_FOLDER)
+
+        # Путь сохранения изображения
+        image_path = os.path.join(UPLOAD_FOLDER, image.filename)
+        image.save(image_path)
+
+        # Сохранение данных рецепта в базе данных
+        result = fun.add_recipe(title, description, image_path, author)
+        if result:
+            return jsonify({"status": "success", "message": "Рецепт загружен"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка сохранения изображения: {e}"}), 500
+
+    result = fun.add_recipe(title, description, image_path, author)
+    if result:
+        return jsonify({"status": "success", "message": "Рецепт загружен"}), 200
     else:
-        return jsonify({"status": "error", "message": "Неверное значение purpose"}), 400
+        return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
 
 
-def handle_registration(login, email, password):
-    """Обработка запроса на регистрацию."""
-    result = fun.register_user(login, email, password)
-    if result:  # Регистрация успешна
-        return jsonify({"status": "success", "message": f"Пользователь {login} зарегистрирован"})
-    else:
-        return jsonify({"status": "error", "message": "Пользователь уже существует или ошибка базы данных"}), 400
-
-
-def handle_authentication(login, password):
-    """Обработка запроса на аутентификацию."""
-    result = fun.authenticate_user(login, password)
-    if result:  # Аутентификация успешна
-        return jsonify(result)
-    else:
-        return jsonify({"status": "error", "message": "Неверные учетные данные"}), 401
+@app.route('/get_recipes', methods=['GET'])
+def get_recipes():
+    try:
+        recipes = fun.get_all_recipes()
+        return jsonify({"status": "success", "recipes": recipes}), 200
+    except Exception as e:
+        print(f"Ошибка при получении рецептов: {e}")
+        return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
 
 
 if __name__ == '__main__':
+    # Создаём папку перед запуском сервера
+    if not os.path.exists(UPLOAD_FOLDER):
+        try:
+            os.makedirs(UPLOAD_FOLDER)
+            print(f"Папка {UPLOAD_FOLDER} создана успешно.")
+        except Exception as e:
+            print(f"Ошибка при создании папки {UPLOAD_FOLDER}: {e}")
     app.run(host='0.0.0.0', port=5000)
