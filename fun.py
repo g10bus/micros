@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 DATABASE_PATH = 'app_database.db'
@@ -51,10 +52,11 @@ def add_recipe(title, description, image_path, author):
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     try:
+        image_filename = os.path.basename(image_path)
         cursor.execute('''
             INSERT INTO recipes (title, description, image_path, author)
             VALUES (?, ?, ?, ?)
-        ''', (title, description, image_path, author))
+        ''', (title, description, image_filename, author))
         conn.commit()
         return True
     except sqlite3.Error as e:
@@ -70,8 +72,12 @@ def get_all_recipes():
     try:
         cursor.execute("SELECT * FROM recipes")
         rows = cursor.fetchall()
+        base_url = "http://10.19.30.54:5000/uploads/"
         return [
-            {"id": row[0], "title": row[1], "description": row[2], "image_path": row[3], "author": row[4]}
+            {"id": row[0], "title": row[1],
+             "description": row[2],
+             "image_path": base_url + row[3], # Генерация URL для изображения
+             "author": row[4]}
             for row in rows
         ]
     except sqlite3.OperationalError as e:

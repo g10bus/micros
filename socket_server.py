@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 import sqlite3
 import fun
 import os
@@ -55,6 +55,7 @@ def upload_recipe():
         description = request.form.get('description')
         author = request.form.get('author')
 
+        # Проверка на заполнение всех полей
         if not (title and description and author):
             return jsonify({"status": "error", "message": "Все поля должны быть заполнены"}), 400
 
@@ -67,6 +68,13 @@ def upload_recipe():
         image_path = os.path.join(UPLOAD_FOLDER, image.filename)
         image.save(image_path)
 
+        # # Сохраняем изображение в папку uploads
+        # image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
+        # image.save(image_path)
+
+        # # Формируем URL для доступа к изображению
+        # image_url = request.url_root + 'uploads/' + image.filename
+
         # Сохранение данных рецепта в базе данных
         result = fun.add_recipe(title, description, image_path, author)
         if result:
@@ -76,12 +84,23 @@ def upload_recipe():
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"Ошибка сохранения изображения: {e}"}), 500
+#Прошлые изменения
+    # result = fun.add_recipe(title, description, image_path, author)
+    # if result:
+    #     return jsonify({"status": "success", "message": "Рецепт загружен"}), 200
+    # else:
+    #     return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
 
-    result = fun.add_recipe(title, description, image_path, author)
-    if result:
-        return jsonify({"status": "success", "message": "Рецепт загружен"}), 200
-    else:
-        return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
+
+
+
+#Новые изменения
+# @app.route('/uploads/<filename>', methods=['GET'])
+# def uploaded_file(filename):
+#     try:
+#         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+#     except Exception as e:
+#         return jsonify({"status": "error", "message": f"Ошибка доступа к файлу: {e}"}), 404
 
 
 @app.route('/get_recipes', methods=['GET'])
@@ -92,6 +111,14 @@ def get_recipes():
     except Exception as e:
         print(f"Ошибка при получении рецептов: {e}")
         return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
+
+@app.route('/uploads/<filename>', methods=['GET'])
+def uploaded_file(filename):
+    try:
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка доступа к файлу: {e}"}), 404
+
 
 
 if __name__ == '__main__':
