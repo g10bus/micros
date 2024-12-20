@@ -54,9 +54,15 @@ def upload_recipe():
         title = request.form.get('title')
         description = request.form.get('description')
         author = request.form.get('author')
+        timeCook = request.form.get('timeCook')
+        countPortions = request.form.get('countPortions')
+        ingredients = request.form.get('ingredients')
+
+        print(
+            f"title: {title}, description: {description}, author: {author}, timeCook: {timeCook}, servings: {countPortions}, ingredients: {ingredients}")
 
         # Проверка на заполнение всех полей
-        if not (title and description and author):
+        if not (title and description and author and timeCook and countPortions and ingredients):
             return jsonify({"status": "error", "message": "Все поля должны быть заполнены"}), 400
 
         # Проверяем наличие папки uploads
@@ -76,7 +82,7 @@ def upload_recipe():
         # image_url = request.url_root + 'uploads/' + image.filename
 
         # Сохранение данных рецепта в базе данных
-        result = fun.add_recipe(title, description, image_path, author)
+        result = fun.add_recipe(title, description, image_path, author, timeCook, countPortions, ingredients)
         if result:
             return jsonify({"status": "success", "message": "Рецепт загружен"}), 200
         else:
@@ -108,6 +114,7 @@ def get_recipes():
     try:
         recipes = fun.get_all_recipes()
         return jsonify({"status": "success", "recipes": recipes}), 200
+
     except Exception as e:
         print(f"Ошибка при получении рецептов: {e}")
         return jsonify({"status": "error", "message": "Ошибка базы данных"}), 500
